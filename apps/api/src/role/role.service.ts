@@ -14,9 +14,7 @@ export class RoleService {
   }
 
   async findAll() {
-    return this.prisma.role.findMany({
-      where: { isDelete: false },
-    });
+    return this.prisma.role.findMany();
   }
 
   async findOne(id: string) {
@@ -33,9 +31,8 @@ export class RoleService {
   }
 
   async remove(id: string) {
-    return this.prisma.role.update({
+    return this.prisma.role.delete({
       where: { id },
-      data: { isDelete: true, deletedAt: new Date() },
     });
   }
 }
