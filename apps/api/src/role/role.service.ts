@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -31,6 +31,12 @@ export class RoleService {
   }
 
   async remove(id: string) {
+    const role = await this.prisma.role.findUniqueOrThrow({
+      where: { id },
+    });
+    if (role.isProtected) {
+      throw new BadRequestException(`Cannot delete system role "${role.name}"`);
+    }
     return this.prisma.role.delete({
       where: { id },
     });
