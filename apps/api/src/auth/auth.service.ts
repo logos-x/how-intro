@@ -15,12 +15,20 @@ import { LoginDto } from './dto/request/login.dto';
 import type { StringValue } from 'ms';
 import { Prisma } from '@prisma/client';
 import ms from 'ms';
-import { RefreshDto } from './dto/request/refresh.dto';
 import { createHash } from 'node:crypto';
-import { LogoutDto } from './dto/request/logout.dto';
 import { RegisterResponseDto } from './dto/response/register-response.dto';
-import { LoginResponseDto } from './dto/response/login-response.dto';
-import { RefreshResponseDto } from './dto/response/refresh-response.dto';
+import { UserInfoDto } from './dto/response/user-info.dto';
+
+type LoginResult = {
+  accessToken: string;
+  refreshToken: string;
+  user: UserInfoDto;
+};
+
+type RefreshResult = {
+  accessToken: string;
+  refreshToken: string;
+};
 
 @Injectable()
 export class AuthService {
@@ -79,7 +87,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto): Promise<LoginResponseDto> {
+  async login(dto: LoginDto): Promise<LoginResult> {
     const isEmail = dto.identifier.includes('@');
     const user = await this.prisma.user.findFirst({
       where: isEmail ? { email: dto.identifier } : { username: dto.identifier },
@@ -159,10 +167,8 @@ export class AuthService {
     };
   }
 
-  async refresh(dto: RefreshDto): Promise<RefreshResponseDto> {
-    const tokenHash = createHash('sha256')
-      .update(dto.refreshToken)
-      .digest('hex');
+  async refresh(refreshToken: string): Promise<RefreshResult> {
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
     const tokenRecord = await this.prisma.refreshToken.findFirst({
       where: {
         token: tokenHash,
@@ -223,10 +229,8 @@ export class AuthService {
     };
   }
 
-  async logout(dto: LogoutDto): Promise<void> {
-    const tokenHash = createHash('sha256')
-      .update(dto.refreshToken)
-      .digest('hex');
+  async logout(refreshToken: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
     await this.prisma.refreshToken.deleteMany({
       where: {
         token: tokenHash,
