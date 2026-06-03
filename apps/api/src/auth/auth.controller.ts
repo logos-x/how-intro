@@ -1,13 +1,20 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/request/register.dto';
 import { LoginDto } from './dto/request/login.dto';
-import { RefreshDto } from './dto/request/refresh.dto';
-import { LogoutDto } from './dto/request/logout.dto';
 import { RegisterResponseDto } from './dto/response/register-response.dto';
 import { LoginResponseDto } from './dto/response/login-response.dto';
 import { RefreshResponseDto } from './dto/response/refresh-response.dto';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+import type { Response, Request } from 'express';
+import { REFRESH_TOKEN_COOKIE_OPTIONS } from './constants/cookie.constant';
 
 @Controller('auth')
 export class AuthController {
@@ -21,19 +28,57 @@ export class AuthController {
 
   @Post('login')
   @ResponseMessage('Login successfully')
-  async login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
-    return await this.authService.login(dto);
+  async login(
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: LoginDto,
+  ): Promise<LoginResponseDto> {
+    const result = await this.authService.login(dto);
+    res.cookie(
+      'refreshToken',
+      result.refreshToken,
+      REFRESH_TOKEN_COOKIE_OPTIONS(),
+    );
+
+    return {
+      accessToken: result.accessToken,
+      user: result.user,
+    };
   }
 
   @Post('refresh')
   @ResponseMessage('Token refreshed successfully')
-  async refresh(@Body() dto: RefreshDto): Promise<RefreshResponseDto> {
-    return await this.authService.refresh(dto);
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<RefreshResponseDto> {
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+    const result = await this.authService.refresh(refreshToken);
+    res.cookie(
+      'refreshToken',
+      result.refreshToken,
+      REFRESH_TOKEN_COOKIE_OPTIONS(),
+    );
+    return {
+      accessToken: result.accessToken,
+    };
   }
 
   @Post('logout')
   @ResponseMessage('Logout successfully')
-  async logout(@Body() dto: LogoutDto): Promise<void> {
-    return await this.authService.logout(dto);
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    const refreshToken = req.cookies.refreshToken as string | undefined;
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
+      res.clearCookie('refreshToken', {
+        ...REFRESH_TOKEN_COOKIE_OPTIONS(),
+        maxAge: undefined,
+      });
+    }
   }
 }
