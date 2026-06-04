@@ -3,4 +3,7 @@ export const ROLES = {
   ADMIN: 'ADMIN',
 } as const;
 
-export const AUTH_PROVIDER = 'LOCAL' as const;
+export const AUTH_PROVIDER = {
+  LOCAL: 'LOCAL',
+  GOOGLE: 'GOOGLE',
+} as const;
