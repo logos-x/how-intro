@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -15,9 +16,10 @@ import { LoginDto } from './dto/request/login.dto';
 import type { StringValue } from 'ms';
 import { Prisma } from '@prisma/client';
 import ms from 'ms';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { RegisterResponseDto } from './dto/response/register-response.dto';
 import { UserInfoDto } from './dto/response/user-info.dto';
+import { MailService } from '../mail/mail.service';
 
 type LoginResult = {
   accessToken: string;
@@ -36,6 +38,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
@@ -68,6 +71,20 @@ export class AuthService {
           },
         });
 
+        // Send verification email
+        const token = randomBytes(32).toString('hex');
+        await tx.verificationToken.create({
+          data: {
+            email: dto.email,
+            token,
+            expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        });
+
+        this.mailService
+          .sendVerificationEmail(dto.email, token)
+          .catch(console.error);
+
         return {
           id: newUser.id,
           username: newUser.username,
@@ -87,6 +104,25 @@ export class AuthService {
     }
   }
 
+  async verifyEmail(token: string): Promise<void> {
+    const record = await this.prisma.verificationToken.findUnique({
+      where: { token },
+    });
+    if (!record || record.expiredAt < new Date()) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { email: record.email },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      this.prisma.verificationToken.delete({
+        where: { id: record.id },
+      }),
+    ]);
+  }
+
   async login(dto: LoginDto): Promise<LoginResult> {
     const isEmail = dto.identifier.includes('@');
     const user = await this.prisma.user.findFirst({
@@ -94,6 +130,11 @@ export class AuthService {
     });
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException(
+        'Please verify your email before logging in',
+      );
     }
 
     const account = await this.prisma.account.findFirst({

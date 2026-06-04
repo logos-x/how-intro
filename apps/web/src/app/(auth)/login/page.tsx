@@ -5,13 +5,26 @@ import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
 import { Label } from "@repo/ui/label";
 import { GoogleChromeLogoIcon, AppleLogoIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
-import { useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useLogin } from "../../../features/auth";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate, isPending } = useLogin();
+
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === 'true') {
+      toast.success('Xác thực email thành công! Đăng nhập để sử dụng hệ thống');
+    } else if (verified === 'false') {
+      toast.error('Link xác thực không hợp lệ hoặc đã hết hạn.');
+    }
+  }, [searchParams]);
 
   const [form, setForm] = useState({
     identifier: "",
@@ -24,6 +37,7 @@ export default function LoginPage() {
   }
 
   return (
+    <Suspense fallback={<div>Loading...</div>}>
     <div className="w-full mx-auto sm:max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl">Welcome back</CardTitle>
@@ -97,5 +111,6 @@ export default function LoginPage() {
         </form>
       </CardContent>
     </div>
+    </Suspense>
   );
 }
