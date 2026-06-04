@@ -18,6 +18,7 @@ import { ResponseMessage } from '../common/decorators/response-message.decorator
 import type { Response, Request } from 'express';
 import { REFRESH_TOKEN_COOKIE_OPTIONS } from './constants/cookie.constant';
 import { ConfigService } from '@nestjs/config';
+import { GoogleLoginDto } from './dto/request/google-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -62,6 +63,24 @@ export class AuthController {
       REFRESH_TOKEN_COOKIE_OPTIONS(),
     );
 
+    return {
+      accessToken: result.accessToken,
+      user: result.user,
+    };
+  }
+
+  @Post('google')
+  @ResponseMessage('Login with Google successfully')
+  async googleLogin(
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: GoogleLoginDto,
+  ): Promise<LoginResponseDto> {
+    const result = await this.authService.googleLogin(dto.accessToken);
+    res.cookie(
+      'refreshToken',
+      result.refreshToken,
+      REFRESH_TOKEN_COOKIE_OPTIONS(),
+    );
     return {
       accessToken: result.accessToken,
       user: result.user,

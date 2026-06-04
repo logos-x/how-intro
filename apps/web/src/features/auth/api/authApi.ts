@@ -1,5 +1,5 @@
 import { apiClient } from '@/core/api';
-import type { ApiResponse, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from "@repo/shared";
+import type { ApiResponse, GoogleLoginRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '@repo/shared';
 import { API_ENDPOINTS } from "@/core/api";
 
 export const authApi = {
@@ -9,6 +9,13 @@ export const authApi = {
 
   login: async (data: LoginRequest) => {
     return apiClient.post<ApiResponse<LoginResponse>>(API_ENDPOINTS.AUTH.LOGIN, data);
+  },
+
+  googleLogin: async (accessToken: string) => {
+    return apiClient.post<ApiResponse<LoginResponse>>(
+      API_ENDPOINTS.AUTH.GOOGLE,
+      { accessToken } satisfies GoogleLoginRequest,
+    );
   },
 
   logout: () => {

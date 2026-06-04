@@ -41,6 +41,25 @@ export function useLogin() {
   });
 }
 
+export function useGoogleLogin() {
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (credential: string) => authApi.googleLogin(credential),
+    onSuccess: (res) => {
+      const { accessToken, user } = res.data.data;
+      setAuth({ accessToken, user });
+      toast.success('Đăng nhập với Google thành công');
+      router.push(ROUTE.HOME);
+    },
+    onError: (error: AxiosError<ApiResponse<LoginResponse>>) => {
+      const message = error.response?.data.message ?? 'Đã có lỗi xảy ra';
+      toast.error(message);
+    },
+  });
+}
+
 export function useLogout() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const router = useRouter();

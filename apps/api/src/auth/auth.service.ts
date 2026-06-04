@@ -20,6 +20,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { RegisterResponseDto } from './dto/response/register-response.dto';
 import { UserInfoDto } from './dto/response/user-info.dto';
 import { MailService } from '../mail/mail.service';
+import { OAuth2Client } from 'google-auth-library';
 
 type LoginResult = {
   accessToken: string;
@@ -34,12 +35,17 @@ type RefreshResult = {
 
 @Injectable()
 export class AuthService {
+  private readonly googleClient: OAuth2Client;
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(
+      this.config.get<string>('GOOGLE_CLIENT_ID'),
+    );
+  }
 
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
     try {
@@ -48,9 +54,7 @@ export class AuthService {
         where: { name: ROLES.USER },
       });
       if (!defaultRole)
-        throw new InternalServerErrorException(
-          'Vai trò mặc định không tồn tại',
-        );
+        throw new InternalServerErrorException('Default role not found');
 
       return await this.prisma.$transaction(async (tx) => {
         const newUser = await tx.user.create({
@@ -65,7 +69,7 @@ export class AuthService {
         await tx.account.create({
           data: {
             userId: newUser.id,
-            provider: AUTH_PROVIDER,
+            provider: AUTH_PROVIDER.LOCAL,
             providerAccountId: dto.email,
             password: hashedPass,
           },
@@ -140,7 +144,7 @@ export class AuthService {
     const account = await this.prisma.account.findFirst({
       where: {
         userId: user.id,
-        provider: AUTH_PROVIDER,
+        provider: AUTH_PROVIDER.GOOGLE,
       },
     });
     if (!account) {
@@ -204,6 +208,123 @@ export class AuthService {
         email: user.email,
         name: user.name,
         roleId: user.roleId,
+      },
+    };
+  }
+
+  async googleLogin(accessTokenGoogle: string): Promise<LoginResult> {
+    const response = await fetch(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: { Authorization: `Bearer ${accessTokenGoogle}` },
+      },
+    );
+    if (!response.ok) {
+      throw new UnauthorizedException('Invalid Google access token');
+    }
+    const profile = await response.json();
+
+    const { email, name, sub } = profile;
+
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          {
+            accounts: {
+              some: { provider: AUTH_PROVIDER.GOOGLE, providerAccountId: sub },
+            },
+          },
+        ],
+      },
+    });
+
+    if (user) {
+      if (user.isBlocked) {
+        throw new ForbiddenException('Account is blocked');
+      }
+
+      const existingAccount = await this.prisma.account.findFirst({
+        where: { userId: user?.id, provider: AUTH_PROVIDER.GOOGLE },
+      });
+      if (!existingAccount) {
+        await this.prisma.account.create({
+          data: {
+            userId: user?.id,
+            provider: AUTH_PROVIDER.GOOGLE,
+            providerAccountId: sub,
+          },
+        });
+      }
+    } else {
+      const defaultRole = await this.prisma.role.findUnique({
+        where: { name: ROLES.USER },
+      });
+      if (!defaultRole) {
+        throw new InternalServerErrorException('Default role not found');
+      }
+
+      const username =
+        email.split('@')[0] + '_' + Math.random().toString(36).slice(2, 6);
+
+      user = await this.prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            name: name ?? email.split('@')[0],
+            username,
+            roleId: defaultRole.id,
+          },
+        });
+
+        await tx.account.create({
+          data: {
+            userId: newUser.id,
+            provider: AUTH_PROVIDER.GOOGLE,
+            providerAccountId: sub,
+          },
+        });
+
+        return newUser;
+      });
+    }
+
+    await this.prisma.user.update({
+      where: { id: user?.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const accessToken = await this.jwtService.signAsync({
+      sub: user?.id,
+      email: user?.email,
+      roleId: user?.roleId,
+    });
+    const refreshExpiresIn =
+      (this.config.get<string>('REFRESH_EXPIRES_IN') as StringValue) ?? '7d';
+    const refreshExpiresMs = ms(refreshExpiresIn);
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: user?.id },
+      {
+        secret: this.config.get<string>('REFRESH_SECRET'),
+        expiresIn: refreshExpiresMs,
+      },
+    );
+    const hashedToken = createHash('sha256').update(refreshToken).digest('hex');
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user?.id,
+        token: hashedToken,
+        expiredAt: new Date(Date.now() + refreshExpiresMs),
+      },
+    });
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user?.id,
+        email: user?.email,
+        name: user?.name,
+        roleId: user?.roleId,
       },
     };
   }
