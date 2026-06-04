@@ -22,8 +22,9 @@ model User {
   name     String?
   username String  @unique
 
-  isBlocked   Boolean   @default(false)
-  lastLoginAt DateTime?
+  isBlocked       Boolean   @default(false)
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
 
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
