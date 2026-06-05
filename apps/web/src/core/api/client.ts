@@ -31,8 +31,8 @@ apiClient.interceptors.response.use(
     }
 
     const { status, config } = error.response;
-
-    if (status !== 401 || config.url?.includes('/auth/refresh')) {
+    const originalRequestHadToken = config.headers?.Authorization;
+    if (status !== 401 || !originalRequestHadToken || config.url?.includes('/auth/refresh')) {
       return Promise.reject(error);
     }
 
