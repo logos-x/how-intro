@@ -1,4 +1,4 @@
-import { ApiResponse, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from "@repo/shared";
+import { ApiResponse, ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from "@repo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { authApi } from "../api/authApi";
 import { toast } from "sonner";
@@ -72,4 +72,22 @@ export function useLogout() {
       router.push(ROUTE.LOGIN);
     },
   });
+}
+
+export function useChangePassword() {
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (data: ChangePasswordRequest) => authApi.changePassword(data),
+    onSuccess: () => {
+      clearAuth();
+      toast.success('Đổi mật khẩu thành công');
+      router.push(ROUTE.LOGIN);
+    },
+    onError: (error: AxiosError<ApiResponse<void>>) => {
+      const message = error.response?.data.message ?? 'Đã có lỗi xảy ra';
+      toast.error(message);
+    }
+  })
 }

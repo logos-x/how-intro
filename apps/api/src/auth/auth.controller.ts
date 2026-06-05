@@ -7,6 +7,8 @@ import {
   UnauthorizedException,
   Query,
   Get,
+  Patch,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/request/register.dto';
@@ -19,6 +21,8 @@ import type { Response, Request } from 'express';
 import { REFRESH_TOKEN_COOKIE_OPTIONS } from './constants/cookie.constant';
 import { ConfigService } from '@nestjs/config';
 import { GoogleLoginDto } from './dto/request/google-login.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/request/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -122,5 +126,24 @@ export class AuthController {
         maxAge: undefined,
       });
     }
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Change password successfully')
+  async changePassword(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+
+    await this.authService.changePassword(userId, dto);
+
+    res.clearCookie('refreshToken', {
+      ...REFRESH_TOKEN_COOKIE_OPTIONS(),
+      maxAge: undefined,
+    });
   }
 }

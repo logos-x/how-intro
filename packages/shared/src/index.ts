@@ -16,6 +16,7 @@ export type {
   GoogleLoginRequest,
   RefreshRequest,
   LogoutRequest,
+  ChangePasswordRequest,
   UserInfo,
   RegisterResponse,
   LoginResponse,

@@ -23,6 +23,11 @@ export interface LogoutRequest {
   refreshToken: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 // Response DTOs
 export interface UserInfo {
   id: string;

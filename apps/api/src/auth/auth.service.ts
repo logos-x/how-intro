@@ -21,6 +21,7 @@ import { RegisterResponseDto } from './dto/response/register-response.dto';
 import { UserInfoDto } from './dto/response/user-info.dto';
 import { MailService } from '../mail/mail.service';
 import { OAuth2Client } from 'google-auth-library';
+import { ChangePasswordDto } from './dto/request/change-password.dto';
 
 type LoginResult = {
   accessToken: string;
@@ -144,7 +145,7 @@ export class AuthService {
     const account = await this.prisma.account.findFirst({
       where: {
         userId: user.id,
-        provider: AUTH_PROVIDER.GOOGLE,
+        provider: AUTH_PROVIDER.LOCAL,
       },
     });
     if (!account) {
@@ -398,5 +399,32 @@ export class AuthService {
         token: tokenHash,
       },
     });
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const { currentPassword, newPassword } = dto;
+    const existingAccount = await this.prisma.account.findFirst({
+      where: { userId, provider: AUTH_PROVIDER.LOCAL },
+    });
+    if (!existingAccount) {
+      throw new BadRequestException('This account cannot change password');
+    }
+    const isMatch = await bcrypt.compare(
+      currentPassword,
+      existingAccount.password!,
+    );
+    if (!isMatch) {
+      throw new BadRequestException('Current password is not match');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.prisma.$transaction([
+      this.prisma.account.update({
+        where: { id: existingAccount.id },
+        data: { password: hashedPassword },
+      }),
+      this.prisma.refreshToken.deleteMany({
+        where: { userId },
+      }),
+    ]);
   }
 }
