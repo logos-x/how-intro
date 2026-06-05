@@ -60,6 +60,14 @@ model VerificationToken {
   createdAt DateTime @default(now())
 }
 
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiredAt DateTime
+  createdAt DateTime @default(now())
+}
+
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique

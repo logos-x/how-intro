@@ -1,7 +1,16 @@
 import { apiClient } from '@/core/api';
-import type { ApiResponse, GoogleLoginRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '@repo/shared';
+import type {
+  ApiResponse,
+  ForgotPasswordRequest,
+  GoogleLoginRequest,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  ResetPasswordRequest,
+  ChangePasswordRequest
+} from '@repo/shared';
 import { API_ENDPOINTS } from "@/core/api";
-import { ChangePasswordRequest } from '@repo/shared';
 
 export const authApi = {
   register: async (data: RegisterRequest) => {
@@ -32,5 +41,19 @@ export const authApi = {
       API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
       data
     )
+  },
+
+  forgotPassword(data: ForgotPasswordRequest) {
+    return apiClient.post<ApiResponse<void>>(
+      API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+      data
+    );
+  },
+
+  resetPassword(data: ResetPasswordRequest) {
+    return apiClient.post<ApiResponse<void>>(
+      API_ENDPOINTS.AUTH.RESET_PASSWORD,
+      data
+    );
   }
 };

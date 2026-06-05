@@ -97,6 +97,12 @@ export default function LoginPage() {
             <Button className="w-full" disabled={isPending}>
               {isPending ? "Signing in..." : "Sign In"}
             </Button>
+            
+            <div className="text-right text-sm">
+              <a href="/forgot-password" className="underline font-medium">
+                Forgot password?
+              </a>
+            </div>
 
             <div className="relative flex items-center py-2">
               <div className="flex-grow border-t" />

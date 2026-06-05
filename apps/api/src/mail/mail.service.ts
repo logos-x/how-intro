@@ -42,4 +42,29 @@ export class MailService {
       `,
     });
   }
+
+  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
+    const resetUrl = `${this.config.get<string>('WEB_URL')}/reset-password?token=${token}`;
+
+    await this.transporter.sendMail({
+      from: `"${this.config.get<string>('FROM_NAME')}" <${this.config.get<string>('FROM_EMAIL')}>`,
+      to,
+      subject: 'Đặt lại mật khẩu - How Play',
+      html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Đặt lại mật khẩu</h2>
+        <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản How Play.</p>
+        <p>Vui lòng click vào nút bên dưới để đặt lại mật khẩu:</p>
+        <a href="${resetUrl}"
+           style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+          Đặt lại mật khẩu
+        </a>
+        <p>Hoặc copy link này vào trình duyệt:</p>
+        <p>${resetUrl}</p>
+        <p>Link hết hạn sau 1 giờ.</p>
+        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+      </div>
+    `,
+    });
+  }
 }

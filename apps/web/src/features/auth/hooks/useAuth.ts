@@ -1,4 +1,4 @@
-import { ApiResponse, ChangePasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from "@repo/shared";
+import { ApiResponse, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, ResetPasswordRequest } from "@repo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { authApi } from "../api/authApi";
 import { toast } from "sonner";
@@ -90,4 +90,33 @@ export function useChangePassword() {
       toast.error(message);
     }
   })
+}
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (data: ForgotPasswordRequest) => authApi.forgotPassword(data),
+    onSuccess: () => {
+      toast.success('Kiểm tra email để đặt lại mật khẩu');
+    },
+    onError: (error: AxiosError<ApiResponse<void>>) => {
+      const message = error.response?.data.message ?? 'Đã có lỗi xảy ra';
+      toast.error(message);
+    },
+  });
+}
+
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (data: ResetPasswordRequest) => authApi.resetPassword(data),
+    onSuccess: () => {
+      toast.success('Đặt lại mật khẩu thành công');
+      router.push(ROUTE.LOGIN);
+    },
+    onError: (error: AxiosError<ApiResponse<void>>) => {
+      const message = error.response?.data.message ?? 'Đã có lỗi xảy ra';
+      toast.error(message);
+    },
+  });
 }

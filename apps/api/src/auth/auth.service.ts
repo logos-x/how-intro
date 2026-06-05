@@ -22,6 +22,8 @@ import { UserInfoDto } from './dto/response/user-info.dto';
 import { MailService } from '../mail/mail.service';
 import { OAuth2Client } from 'google-auth-library';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
+import { ForgotPasswordDto } from './dto/request/forgot-password.dto';
+import { ResetPasswordDto } from './dto/request/reset-password.dto';
 
 type LoginResult = {
   accessToken: string;
@@ -424,6 +426,75 @@ export class AuthService {
       }),
       this.prisma.refreshToken.deleteMany({
         where: { userId },
+      }),
+    ]);
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+    const { email } = dto;
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (!user) return;
+
+    const account = await this.prisma.account.findFirst({
+      where: { userId: user.id, provider: AUTH_PROVIDER.LOCAL },
+    });
+    if (!account) return;
+
+    await this.prisma.passwordResetToken.deleteMany({
+      where: { email },
+    });
+
+    const token = randomBytes(32).toString('hex');
+    await this.prisma.passwordResetToken.create({
+      data: {
+        email,
+        token,
+        expiredAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+
+    this.mailService.sendPasswordResetEmail(email, token).catch(console.error);
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const { token, password } = dto;
+
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { token },
+    });
+    if (!record || record.expiredAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: record.email },
+    });
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const account = await this.prisma.account.findFirst({
+      where: { userId: user.id, provider: AUTH_PROVIDER.LOCAL },
+    });
+    if (!account) {
+      throw new BadRequestException('This account cannot reset password');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.account.update({
+        where: { id: account.id },
+        data: { password: hashedPassword },
+      }),
+      this.prisma.passwordResetToken.delete({
+        where: { id: record.id },
+      }),
+      this.prisma.refreshToken.deleteMany({
+        where: { userId: user.id },
       }),
     ]);
   }

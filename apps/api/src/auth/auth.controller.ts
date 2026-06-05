@@ -23,6 +23,8 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleLoginDto } from './dto/request/google-login.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ChangePasswordDto } from './dto/request/change-password.dto';
+import { ForgotPasswordDto } from './dto/request/forgot-password.dto';
+import { ResetPasswordDto } from './dto/request/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -145,5 +147,17 @@ export class AuthController {
       ...REFRESH_TOKEN_COOKIE_OPTIONS(),
       maxAge: undefined,
     });
+  }
+
+  @Post('forgot-password')
+  @ResponseMessage('If the email exists, a reset link has been sent')
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+    await this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @ResponseMessage('Password has been reset successfully')
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    await this.authService.resetPassword(dto);
   }
 }
