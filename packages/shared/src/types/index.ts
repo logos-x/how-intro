@@ -5,6 +5,8 @@ export type {
   RefreshRequest,
   LogoutRequest,
   ChangePasswordRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   UserInfo,
   RegisterResponse,
   LoginResponse,

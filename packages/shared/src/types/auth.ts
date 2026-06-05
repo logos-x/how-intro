@@ -28,6 +28,15 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
 // Response DTOs
 export interface UserInfo {
   id: string;
