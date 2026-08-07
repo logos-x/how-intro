@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// AUTH MODELS
+// ============================================
+
 model Role {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -31,10 +35,12 @@ model User {
 
   accounts Account[]
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  isDelete      Boolean        @default(false)
-  refreshTokens RefreshToken[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  isDelete          Boolean        @default(false)
+  refreshTokens     RefreshToken[]
+  categoriesCreated Category[]     @relation("CategoryCreatedBy")
+  categoriesUpdated Category[]     @relation("CategoryUpdatedBy")
 
   @@index([roleId])
 }
@@ -76,4 +82,59 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ============================================
+// TAXONOMY MODELS
+// ============================================
+enum CategoryType {
+  AUTO
+  MANUAL
+}
+
+enum LayoutType {
+  CAROUSEL
+  GRID
+  RANKED_LIST
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+model Category {
+  id            String  @id @default(uuid())
+  name          String  @db.VarChar(100)
+  slug          String  @unique @db.VarChar(150)
+  subtitle      String? @db.VarChar(255)
+  description   String?
+  coverImageUrl String? @map("cover_image_url") @db.VarChar(500)
+
+  metaTitle       String? @map("meta_title")
+  metaDescription String? @map("meta_description")
+
+  type       CategoryType
+  layoutType LayoutType     @map("layout_type")
+  status     CategoryStatus @default(DRAFT)
+
+  displayOrder Int     @default(0) @map("display_order")
+  isPinned     Boolean @default(false) @map("is_pinned")
+
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  createdById String @map("created_by")
+  updatedById String @map("updated_by")
+
+  createdBy User @relation("CategoryCreatedBy", fields: [createdById], references: [id])
+  updatedBy User @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  @@index([status, displayOrder])
+  @@index([slug])
+  @@map("categories")
 }
