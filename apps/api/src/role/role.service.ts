@@ -12,7 +12,6 @@ export class RoleService {
       data: createRoleDto,
     });
   }
-
   async findAll() {
     return this.prisma.role.findMany();
   }
