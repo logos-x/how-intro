@@ -1,36 +1,44 @@
 import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy {
+  private readonly supabase: SupabaseClient;
+
   constructor(
-    config: ConfigService,
-    private prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_ACCESS_SECRET')!,
-    });
+    this.supabase = createClient(
+      this.config.getOrThrow<string>('SUPABASE_URL'),
+      this.config.getOrThrow<string>('SUPABASE_SERVICE_KEY'),
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
   }
 
-  async validate(payload: JwtPayload) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+  async validate(token: string) {
+    const { data, error } = await this.supabase.auth.getUser(token);
+
+    if (error || !data.user) {
+      throw new UnauthorizedException();
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { supabaseUserId: data.user.id },
       include: { role: true },
     });
+
     if (!user || user.isBlocked || user.isDelete) {
       throw new UnauthorizedException();
     }
+
     return {
       id: user.id,
       email: user.email,
       roleId: user.roleId,
-      roleName: user.role.name,
+      roleName: user.role?.name ?? '',
     };
   }
 }

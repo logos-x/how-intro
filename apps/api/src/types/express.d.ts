@@ -1,8 +1,10 @@
 declare namespace Express {
-  interface User {
-    id: string;
-    email: string | null;
-    roleId: string;
-    roleName: string;
+  interface Request {
+    user?: {
+      id: string;
+      email: string | null;
+      roleId: string;
+      roleName: string;
+    };
   }
 }
