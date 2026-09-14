@@ -1,13 +1,13 @@
-import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
+import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const roles = [
-    { name: 'ADMIN', isProtected: true },
-    { name: 'USER', isProtected: true },
+    { name: "ADMIN", isProtected: true },
+    { name: "USER", isProtected: true },
   ];
 
   for (const role of roles) {
@@ -20,10 +20,10 @@ async function main() {
   }
 
   const adminRole = await prisma.role.findUnique({
-    where: { name: 'ADMIN' },
+    where: { name: "ADMIN" },
   });
   if (!adminRole) {
-    throw new Error('ADMIN not found after seeding');
+    throw new Error("ADMIN not found after seeding");
   }
 
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -40,29 +40,11 @@ async function main() {
     create: {
       username: adminUsername!,
       email: adminEmail,
-      name: 'Administrator',
+      name: "Administrator",
       roleId: adminRole.id,
     },
   });
-
-  await prisma.account.upsert({
-    where: {
-      provider_providerAccountId: {
-        provider: 'LOCAL',
-        providerAccountId: adminEmail!,
-      },
-    },
-    update: {
-      password: hashedPass!,
-    },
-    create: {
-      userId: adminUser.id,
-      provider: 'LOCAL',
-      providerAccountId: adminEmail!,
-      password: hashedPass!,
-    },
-  });
-  console.log('Administrator created/updated');
+  console.log("Administrator created/updated");
 }
 
 main()

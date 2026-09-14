@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -29,59 +30,18 @@ model User {
   isBlocked       Boolean   @default(false)
   lastLoginAt     DateTime?
   emailVerifiedAt DateTime?
+  supabaseUserId  String?   @unique
 
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  accounts Account[]
-
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  isDelete          Boolean        @default(false)
-  refreshTokens     RefreshToken[]
-  categoriesCreated Category[]     @relation("CategoryCreatedBy")
-  categoriesUpdated Category[]     @relation("CategoryUpdatedBy")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  isDelete          Boolean    @default(false)
+  categoriesCreated Category[] @relation("CategoryCreatedBy")
+  categoriesUpdated Category[] @relation("CategoryUpdatedBy")
 
   @@index([roleId])
-}
-
-model Account {
-  id                String  @id @default(uuid())
-  userId            String
-  provider          String
-  providerAccountId String
-  password          String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
-}
-
-model VerificationToken {
-  id        String   @id @default(uuid())
-  email     String
-  token     String   @unique
-  expiredAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model PasswordResetToken {
-  id        String   @id @default(uuid())
-  email     String
-  token     String   @unique
-  expiredAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
-  expiredAt DateTime
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 // ============================================
