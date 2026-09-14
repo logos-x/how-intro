@@ -1,12 +1,7 @@
-import axios from "axios"; 
-import { InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '@/features/auth';
-
-let isRefreshing = false;
-let refreshQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+import axios from "axios";
+import { InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "@/features/auth";
+import { createClient } from "@/lib/supabase/client";
 
 export const apiClient = axios.create({
   baseURL: "/api",
@@ -15,10 +10,13 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
+apiClient.interceptors.request.use(async (config) => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session?.access_token && config.headers) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
   return config;
 });
@@ -26,54 +24,11 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (!error.response) {
-      return Promise.reject(new Error("Network error: No response received"));
+    if (error.response?.status === 401) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/login";
     }
-
-    const { status, config } = error.response;
-    const originalRequestHadToken = config.headers?.Authorization;
-    if (status !== 401 || !originalRequestHadToken || config.url?.includes('/auth/refresh')) {
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        refreshQueue.push({
-          resolve: (token: string) => {
-            config.headers.Authorization = `Bearer ${token}`;
-            resolve(apiClient(config));
-          },
-          reject,
-        });
-      });
-    }
-
-    isRefreshing = true;
-
-    try {
-      const res = await apiClient.post<{
-        data: { accessToken: string };
-      }>('/auth/refresh');
-
-      const newToken = res.data.data.accessToken;
-
-      useAuthStore.getState().setAccessToken(newToken);
-
-      refreshQueue.forEach((q) => q.resolve(newToken));
-      refreshQueue = [];
-
-      config.headers.Authorization = `Bearer ${newToken}`;
-      return apiClient(config);
-    } catch (refreshError) {
-      refreshQueue.forEach((q) => q.reject(refreshError));
-      refreshQueue = [];
-
-      useAuthStore.getState().clearAuth();
-      window.location.href = '/login';
-
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
+    return Promise.reject(error);
   },
 );

@@ -1,25 +1,35 @@
 "use client";
 
-import { CardHeader, CardTitle, CardDescription, CardContent } from "@repo/ui/card";
+import {
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Button } from "@repo/ui/button";
 import { Label } from "@repo/ui/label";
-import { GoogleChromeLogoIcon, AppleLogoIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
+import {
+  GoogleChromeLogoIcon,
+  AppleLogoIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from "@phosphor-icons/react";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
-import { useGoogleLogin, useLogin } from "../../../features/auth";
+import { useLogin } from "../../../features/auth";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { useGoogleLogin as useGoogleOAuth } from "@react-oauth/google";
+import { createClient } from "@/lib/supabase/client";
 
 function VerificationHandler() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const verified = searchParams.get("verified");
-    if (verified === 'true') {
-      toast.success('Xác thực email thành công! Đăng nhập để sử dụng hệ thống');
-    } else if (verified === 'false') {
-      toast.error('Đường dẫn xác thực không hợp lệ hoặc đã hết hạn!');
+    if (verified === "true") {
+      toast.success("Xác thực email thành công! Đăng nhập để sử dụng hệ thống");
+    } else if (verified === "false") {
+      toast.error("Đường dẫn xác thực không hợp lệ hoặc đã hết hạn!");
     }
   }, [searchParams]);
 
@@ -34,18 +44,15 @@ export default function LoginPage() {
   });
 
   const { mutate: loginMutate, isPending } = useLogin();
-  const { mutate: googleLoginMutate } = useGoogleLogin();
+  const supabase = createClient();
 
-  const googleLogin = useGoogleOAuth({
-    onSuccess: (tokenResponse) => {
-      if (tokenResponse.access_token) {
-        googleLoginMutate(tokenResponse.access_token);
-      }
-    },
-    onError: () => {
-      toast.error('Đăng nhập Google thất bại');
-    },
-  });
+  async function handleGoogleLogin() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/callback` },
+    });
+    if (error) toast.error(error.message);
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,11 +127,7 @@ export default function LoginPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => googleLogin()}
-            >
+            <Button variant="outline" type="button" onClick={handleGoogleLogin}>
               <GoogleChromeLogoIcon className="mr-2 h-4 w-4" /> Google
             </Button>
             <Button variant="outline" type="button">

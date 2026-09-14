@@ -1,59 +1,79 @@
-import { apiClient } from '@/core/api';
+import { createClient } from "@/lib/supabase/client";
 import type {
-  ApiResponse,
-  ForgotPasswordRequest,
-  GoogleLoginRequest,
-  LoginRequest,
-  LoginResponse,
   RegisterRequest,
-  RegisterResponse,
-  ResetPasswordRequest,
-  ChangePasswordRequest
-} from '@repo/shared';
-import { API_ENDPOINTS } from "@/core/api";
+  LoginRequest,
+  ChangePasswordRequest,
+} from "@repo/shared";
+import { apiClient } from "@/core/api";
+
+const supabase = createClient();
 
 export const authApi = {
   register: async (data: RegisterRequest) => {
-    return apiClient.post<ApiResponse<RegisterResponse>>(API_ENDPOINTS.AUTH.REGISTER, data);
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/callback`,
+        data: {
+          username: data.username,
+          name: data.name ?? data.username,
+        },
+      },
+    });
+    if (error) throw error;
+    return { data: { message: "Registration successful" } }
   },
 
   login: async (data: LoginRequest) => {
-    return apiClient.post<ApiResponse<LoginResponse>>(API_ENDPOINTS.AUTH.LOGIN, data);
+    const { data: session, error } = await supabase.auth.signInWithPassword({
+      email: data.identifier.includes("@") ? data.identifier : "",
+      password: data.password,
+    });
+    if (error) throw error;
+
+    const userRes = await apiClient.get("/auth/me");
+    return {
+      data: {
+        accessToken: session.session.access_token,
+        user: userRes.data.data,
+      },
+    };
   },
 
-  googleLogin: async (accessToken: string) => {
-    return apiClient.post<ApiResponse<LoginResponse>>(
-      API_ENDPOINTS.AUTH.GOOGLE,
-      { accessToken } satisfies GoogleLoginRequest,
-    );
+  googleLogin: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/callback`,
+      },
+    });
+    if (error) throw error;
   },
 
-  logout: () => {
-    return apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   },
 
-  refresh: () => {
-    return apiClient.post<ApiResponse<{ accessToken: string }>>(API_ENDPOINTS.AUTH.REFRESH);
+  changePassword: async (data: ChangePasswordRequest) => {
+    const { error } = await supabase.auth.updateUser({
+      password: data.newPassword,
+    });
+    if (error) throw error;
   },
 
-  changePassword(data: ChangePasswordRequest) {
-    return apiClient.patch<ApiResponse<void>>(
-      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
-      data
-    )
+  forgotPassword: async (data: { email: string }) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
   },
 
-  forgotPassword(data: ForgotPasswordRequest) {
-    return apiClient.post<ApiResponse<void>>(
-      API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
-      data
-    );
-  },
-
-  resetPassword(data: ResetPasswordRequest) {
-    return apiClient.post<ApiResponse<void>>(
-      API_ENDPOINTS.AUTH.RESET_PASSWORD,
-      data
-    );
+  resetPassword: async (data: { token: string; password: string}) => {
+    const { error } = await supabase.auth.updateUser({
+      password: data.password,
+    });
+    if (error) throw error;
   }
 };

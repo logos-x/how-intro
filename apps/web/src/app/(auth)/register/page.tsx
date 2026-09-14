@@ -6,15 +6,15 @@ import { Button } from "@repo/ui/button";
 import { Label } from "@repo/ui/label";
 import { GoogleChromeLogoIcon, AppleLogoIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
-import { useGoogleLogin, useRegister } from "../../../features/auth";
-import { useGoogleLogin as useGoogleOAuth } from "@react-oauth/google";
+import { useRegister } from "../../../features/auth";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate, isPending } = useRegister();
-  const { mutate: googleLoginMutate } = useGoogleLogin();
+  const supabase = createClient();
 
   const [form, setForm] = useState({
     name: "",
@@ -23,17 +23,13 @@ export default function RegisterPage() {
     password: "",
   });
 
-
-  const googleLogin = useGoogleOAuth({
-    onSuccess: (tokenResponse) => {
-      if (tokenResponse.access_token) {
-        googleLoginMutate(tokenResponse.access_token);
-      }
-    },
-    onError: () => {
-      toast.error('Đăng nhập Google thất bại');
-    },
-  });
+  async function hangleGoogleLogin() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/callback` },
+    });
+    if (error) toast.error(error.message);
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,7 +116,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button" onClick={() => googleLogin()}>
+            <Button variant="outline" type="button" onClick={hangleGoogleLogin}>
               <GoogleChromeLogoIcon className="mr-2 h-4 w-4" /> Google
             </Button>
             <Button variant="outline" type="button">
