@@ -1,163 +1,28 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Res,
-  Req,
-  UnauthorizedException,
-  Query,
-  Get,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/request/register.dto';
-import { LoginDto } from './dto/request/login.dto';
-import { RegisterResponseDto } from './dto/response/register-response.dto';
-import { LoginResponseDto } from './dto/response/login-response.dto';
-import { RefreshResponseDto } from './dto/response/refresh-response.dto';
-import { ResponseMessage } from '../common/decorators/response-message.decorator';
-import type { Response, Request } from 'express';
-import { REFRESH_TOKEN_COOKIE_OPTIONS } from './constants/cookie.constant';
-import { ConfigService } from '@nestjs/config';
-import { GoogleLoginDto } from './dto/request/google-login.dto';
+import { Controller, Req, Get, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ChangePasswordDto } from './dto/request/change-password.dto';
-import { ForgotPasswordDto } from './dto/request/forgot-password.dto';
-import { ResetPasswordDto } from './dto/request/reset-password.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly config: ConfigService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  @Post('register')
-  @ResponseMessage('Register successfully')
-  async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
-    return await this.authService.register(dto);
-  }
-
-  @Get('verify-email')
-  async verifyEmail(
-    @Res() res: Response,
-    @Query('token') token: string,
-  ): Promise<void> {
-    try {
-      await this.authService.verifyEmail(token);
-      return res.redirect(
-        `${this.config.get<string>('WEB_URL')}/login?verified=true`,
-      );
-    } catch {
-      return res.redirect(
-        `${this.config.get<string>('WEB_URL')}/login?verified=false`,
-      );
-    }
-  }
-
-  @Post('login')
-  @ResponseMessage('Login successfully')
-  async login(
-    @Res({ passthrough: true }) res: Response,
-    @Body() dto: LoginDto,
-  ): Promise<LoginResponseDto> {
-    const result = await this.authService.login(dto);
-    res.cookie(
-      'refreshToken',
-      result.refreshToken,
-      REFRESH_TOKEN_COOKIE_OPTIONS(),
-    );
-
-    return {
-      accessToken: result.accessToken,
-      user: result.user,
-    };
-  }
-
-  @Post('google')
-  @ResponseMessage('Login with Google successfully')
-  async googleLogin(
-    @Res({ passthrough: true }) res: Response,
-    @Body() dto: GoogleLoginDto,
-  ): Promise<LoginResponseDto> {
-    const result = await this.authService.googleLogin(dto.accessToken);
-    res.cookie(
-      'refreshToken',
-      result.refreshToken,
-      REFRESH_TOKEN_COOKIE_OPTIONS(),
-    );
-    return {
-      accessToken: result.accessToken,
-      user: result.user,
-    };
-  }
-
-  @Post('refresh')
-  @ResponseMessage('Token refreshed successfully')
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<RefreshResponseDto> {
-    const refreshToken = req.cookies.refreshToken as string | undefined;
-    if (!refreshToken) {
-      throw new UnauthorizedException('No refresh token provided');
-    }
-    const result = await this.authService.refresh(refreshToken);
-    res.cookie(
-      'refreshToken',
-      result.refreshToken,
-      REFRESH_TOKEN_COOKIE_OPTIONS(),
-    );
-    return {
-      accessToken: result.accessToken,
-    };
-  }
-
-  @Post('logout')
-  @ResponseMessage('Logout successfully')
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
-    const refreshToken = req.cookies.refreshToken as string | undefined;
-    if (refreshToken) {
-      await this.authService.logout(refreshToken);
-      res.clearCookie('refreshToken', {
-        ...REFRESH_TOKEN_COOKIE_OPTIONS(),
-        maxAge: undefined,
-      });
-    }
-  }
-
-  @Patch('change-password')
+  @Get('me')
   @UseGuards(JwtAuthGuard)
-  @ResponseMessage('Change password successfully')
-  async changePassword(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Body() dto: ChangePasswordDto,
-  ): Promise<void> {
+  async getMe(@Req() req: Request) {
     const userId = req.user?.id;
-    if (!userId) throw new UnauthorizedException();
-
-    await this.authService.changePassword(userId, dto);
-
-    res.clearCookie('refreshToken', {
-      ...REFRESH_TOKEN_COOKIE_OPTIONS(),
-      maxAge: undefined,
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        username: true,
+        roleId: true,
+        role: { select: { name: true } },
+        isBlocked: true,
+      },
     });
-  }
-
-  @Post('forgot-password')
-  @ResponseMessage('If the email exists, a reset link has been sent')
-  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
-    await this.authService.forgotPassword(dto);
-  }
-
-  @Post('reset-password')
-  @ResponseMessage('Password has been reset successfully')
-  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
-    await this.authService.resetPassword(dto);
+    return { data: user };
   }
 }

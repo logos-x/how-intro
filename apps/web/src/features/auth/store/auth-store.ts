@@ -1,24 +1,16 @@
-import { UserInfo } from '@repo/shared';
-import { create } from 'zustand';
+import { UserInfo } from "@repo/shared";
+import { create } from "zustand";
 
 interface AuthState {
-  accessToken: string | null;
   user: UserInfo | null;
   isAuthenticated: boolean;
-  setAuth: (payload: { accessToken: string; user: UserInfo }) => void;
-  setAccessToken: (accessToken: string) => void;
+  setUser: (user: UserInfo | null) => void;
   clearAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
   user: null,
   isAuthenticated: false,
-
-  setAuth: ({ accessToken, user }) => set({ accessToken, user, isAuthenticated: true }),
-
-  setAccessToken: (token) => set({ accessToken: token }),
-
-  clearAuth: () => set({ accessToken: null, user: null, isAuthenticated: false }),
-}))
-
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  clearAuth: () => set({ user: null, isAuthenticated: false }),
+}));

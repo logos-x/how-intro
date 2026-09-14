@@ -4,7 +4,6 @@ import { ConfigModule } from '@nestjs/config';
 import { RoleModule } from './role/role.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { MailModule } from './mail/mail.module';
 import { CategoryModule } from './category/category.module';
 
 @Module({
@@ -13,7 +12,6 @@ import { CategoryModule } from './category/category.module';
       isGlobal: true,
     }),
     PrismaModule,
-    MailModule,
     RoleModule,
     UserModule,
     AuthModule,

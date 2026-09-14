@@ -1,15 +1,5 @@
-export type {
-  Prisma,
-  Role,
-  User,
-  Account,
-  RefreshToken,
-  VerificationToken,
-} from '@prisma/client';
-export {
-  ROLES,
-  AUTH_PROVIDER,
-} from './constants';
+export type { Prisma, Role, User } from "@prisma/client";
+export { ROLES, AUTH_PROVIDER } from "./constants";
 export type {
   RegisterRequest,
   LoginRequest,
@@ -24,4 +14,4 @@ export type {
   LoginResponse,
   RefreshResponse,
   ApiResponse,
-} from './types';
+} from "./types";

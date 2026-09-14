@@ -6,22 +6,55 @@ import { Button } from "@repo/ui/button";
 import { Label } from "@repo/ui/label";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
-import { useChangePassword } from "../../../features/auth";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ChangePasswordPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-
-  const { mutate, isPending } = useChangePassword();
+  const [isPending, setIsPending] = useState(false);
 
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
   });
 
-  function handleSubmit(e: FormEvent) {
+  const supabase = createClient();
+  const router = useRouter();
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    mutate(form);
+    setIsPending(true);
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user?.email) {
+      toast.error('Không tìm thấy tài khoản');
+      setIsPending(false);
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: userData.user.email,
+      password: form.currentPassword,
+    });
+
+    if (signInError) {
+      toast.error('Mật khẩu hiện tại không đúng');
+      setIsPending(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: form.newPassword });
+    setIsPending(false);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      await supabase.auth.signOut();
+      toast.success('Đổi mật khẩu thành công');
+      router.push("/login");
+    }
   }
 
   return (
