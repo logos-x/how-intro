@@ -1,13 +1,13 @@
-import { ReactNode} from "react";
-import { Card } from '@repo/ui/card';
+import { ReactNode } from "react";
+import { TopAppBar } from "@/shared/components/layout/TopAppBar";
+import { GlobalFooter } from "@/shared/components/layout/GlobalFooter";
 
-export default function AuthLayout({ children }: {
-  children: ReactNode }) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted px-4">
-        <Card className="w-[440px] max-[425px]:w-[300px] mx-auto px-4">
-          {children}
-        </Card>
-      </div>
-    )
-  }
+export default function AuthLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <TopAppBar />
+      <main className="flex-1">{children}</main>
+      <GlobalFooter />
+    </div>
+  );
+}
