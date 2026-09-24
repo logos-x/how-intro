@@ -1,50 +1,68 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 60 5% 96%;        /* #F7F7F5 - nền xám ấm, không dùng trắng tinh */
+        --foreground: 0 0% 17%;         /* #2B2B2B */
+
+        --card: 0 0% 100%;              /* card vẫn trắng, nổi trên nền xám */
+        --card-foreground: 0 0% 17%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 17%;
+
+        --primary: 220 87% 51%;         /* #155EEF */
+        --primary-foreground: 0 0% 100%;
+
+        --secondary: 60 3% 93%;         /* #EDEDEB - dùng cho chip/tag CHƯA chọn */
+        --secondary-foreground: 0 0% 17%;
+
+        --muted: 60 3% 93%;
+        --muted-foreground: 0 0% 42%;   /* #6B6B6B */
+
+        --accent: 0 0% 10%;             /* #1A1A1A - chip/tag ĐÃ chọn (đen, không phải primary) */
+        --accent-foreground: 0 0% 100%;
+
+        --destructive: 0 84.2% 60.2%;   /* giữ mặc định, SchoolAI không show trạng thái lỗi */
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 60 3% 90%;
+        --input: 60 3% 90%;
+        --ring: 220 87% 51%;            /* trùng primary, khớp SchoolAI focus state */
+
+        --radius: 1rem;                 /* ~16px cho card/input, KHÔNG dùng cho chip/button */
+    }
+
+    .dark {
+        --background: 0 0% 9%;
+        --foreground: 0 0% 95%;
+        --card: 0 0% 12%;
+        --card-foreground: 0 0% 95%;
+        --popover: 0 0% 12%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 220 87% 58%;
+        --primary-foreground: 0 0% 10%;
+        --secondary: 0 0% 18%;
+        --secondary-foreground: 0 0% 95%;
+        --muted: 0 0% 18%;
+        --muted-foreground: 0 0% 65%;
+        --accent: 0 0% 90%;
+        --accent-foreground: 0 0% 10%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 95%;
+        --border: 0 0% 20%;
+        --input: 0 0% 20%;
+        --ring: 220 87% 58%;
+    }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.imgDark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
 }
