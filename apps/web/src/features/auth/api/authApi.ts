@@ -14,15 +14,16 @@ export const authApi = {
       email: data.email,
       password: data.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/callback`,
         data: {
           username: data.username,
           name: data.name ?? data.username,
         },
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     });
     if (error) throw error;
-    return { data: { message: "Registration successful" } }
+
+    return { data: { message: "Registration successful" } };
   },
 
   login: async (data: LoginRequest) => {
@@ -32,10 +33,14 @@ export const authApi = {
     });
     if (error) throw error;
 
+    const accessToken = session.session.access_token;
+
+    apiClient.defaults.headers.common["Authorization"] =
+      `Bearer ${accessToken}`;
     const userRes = await apiClient.get("/auth/me");
     return {
       data: {
-        accessToken: session.session.access_token,
+        accessToken,
         user: userRes.data.data,
       },
     };
@@ -70,10 +75,10 @@ export const authApi = {
     if (error) throw error;
   },
 
-  resetPassword: async (data: { token: string; password: string}) => {
+  resetPassword: async (data: { token: string; password: string }) => {
     const { error } = await supabase.auth.updateUser({
       password: data.password,
     });
     if (error) throw error;
-  }
+  },
 };
