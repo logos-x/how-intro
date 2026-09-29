@@ -44,7 +44,6 @@ export class CategoryService {
         createdById: currentUserId,
         updatedById: currentUserId,
       },
-      include: { createdBy: true, updatedBy: true },
     });
 
     return plainToInstance(CategoryResponseDto, category);
@@ -82,7 +81,6 @@ export class CategoryService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
-        include: { createdBy: true, updatedBy: true },
       }),
       this.prisma.category.count({ where }),
     ]);
@@ -98,7 +96,6 @@ export class CategoryService {
       where: {
         OR: [{ id: identifier }, { slug: identifier }],
       },
-      include: { createdBy: true, updatedBy: true },
     });
 
     if (!category) {
@@ -158,7 +155,6 @@ export class CategoryService {
     const category = await this.prisma.category.update({
       where: { id },
       data,
-      include: { createdBy: true, updatedBy: true },
     });
 
     return plainToInstance(CategoryResponseDto, category);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GraduationCap, HelpCircle } from "lucide-react";
+import { useLogout } from "@/features/auth/hooks";
 
 interface AuthPrompt {
   /** e.g. "Đã có tài khoản?" or "Chưa có tài khoản?" */
@@ -45,6 +46,8 @@ interface TopAppBarProps {
 
 export function TopAppBar({ authPrompt }: TopAppBarProps) {
   const pathname = usePathname();
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
+  const isOnboarding = pathname === "/onboarding";
   const prompt = authPrompt ?? resolveAuthPrompt(pathname);
 
   return (
@@ -69,15 +72,26 @@ export function TopAppBar({ authPrompt }: TopAppBarProps) {
             <HelpCircle className="size-[15px]" />
             Hỗ trợ
           </Link>
-          <div className="flex items-center gap-1 text-sm">
-            <span className="text-[#464554]">{prompt.question}</span>
-            <Link
-              href={prompt.href}
-              className="pl-1 font-semibold text-[#4648d4]"
+          {isOnboarding ? (
+            <button
+              type="button"
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+              className="font-semibold text-[#4648d4] disabled:opacity-50"
             >
-              {prompt.actionLabel}
-            </Link>
-          </div>
+              Đăng xuất
+            </button>
+          ) : (
+            <div className="flex items-center gap-1 text-sm">
+              <span className="text-[#464554]">{prompt.question}</span>
+              <Link
+                href={prompt.href}
+                className="pl-1 font-semibold text-[#4648d4]"
+              >
+                {prompt.actionLabel}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>
