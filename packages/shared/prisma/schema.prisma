@@ -35,11 +35,14 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  isDelete          Boolean    @default(false)
-  categoriesCreated Category[] @relation("CategoryCreatedBy")
-  categoriesUpdated Category[] @relation("CategoryUpdatedBy")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDelete  Boolean  @default(false)
+
+  isVerified          Boolean @default(false)
+  onboardingCompleted Boolean @default(false)
+  level               String?
+  surveyAnswers       Json?
 
   @@index([roleId])
 }
@@ -87,9 +90,6 @@ model Category {
 
   createdById String @map("created_by")
   updatedById String @map("updated_by")
-
-  createdBy User @relation("CategoryCreatedBy", fields: [createdById], references: [id])
-  updatedBy User @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()

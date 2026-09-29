@@ -1,43 +1,62 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
+
+const protectedRoutes = ["/change-password", "/home", "/me", "/onboarding"];
+const authPages = ["/login", "/register"];
+const skipOnboardingRoutes = ["/change-password"];
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const { supabase, response: supabaseResponse, user } =
+    await updateSession(request);
+  const path = request.nextUrl.pathname;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options}) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  const startsWithAny = (routes: string[]) =>
+    routes.some((route) => path === route || path.startsWith(`${route}/`));
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const isProtected = startsWithAny(protectedRoutes);
+  const isAuthPage = startsWithAny(authPages);
 
-  const protectedRoutes = ["/change-password"];
-  const isProtected = protectedRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
-  );
-
-  if (isProtected && !user) {
+  const redirectTo = (target: string) => {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.pathname = target;
+    url.search = "";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies
+      .getAll()
+      .forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  };
+
+  if (!user) {
+    return isProtected ? redirectTo("/login") : supabaseResponse;
+  }
+
+  if (startsWithAny(skipOnboardingRoutes)) {
+    return supabaseResponse;
+  }
+
+  const { data: profile } = await supabase
+    .from("User")
+    .select("onboardingCompleted")
+    .eq("supabaseUserId", user.id)
+    .maybeSingle();
+
+  const isOnboardingCompleted = profile?.onboardingCompleted === true;
+
+  if (!isOnboardingCompleted) {
+    if (
+      (isProtected && !path.startsWith("/onboarding")) ||
+      isAuthPage ||
+      path === "/"
+    ) {
+      return redirectTo("/onboarding");
+    }
+  } else if (
+    path.startsWith("/onboarding") ||
+    isAuthPage ||
+    path === "/"
+  ) {
+    return redirectTo("/home");
   }
 
   return supabaseResponse;
@@ -46,5 +65,5 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ]
-}
+  ],
+};

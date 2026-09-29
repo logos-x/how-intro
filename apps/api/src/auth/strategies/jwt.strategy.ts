@@ -30,7 +30,10 @@ export class JwtStrategy {
       include: { role: true },
     });
 
-    if (!user || user.isBlocked || user.isDelete) {
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (user.isBlocked || user.isDelete) {
       throw new UnauthorizedException();
     }
 

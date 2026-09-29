@@ -19,10 +19,15 @@ import { AxiosError } from "axios";
 export const AUTH_QUERY_KEY = "authentication-key";
 
 export function useRegister() {
+  const router = useRouter();
+
   return useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success("Đăng ký thành công! Kiểm tra email để xác thực.");
+      router.push(
+        `${ROUTE.VERIFY_EMAIL}?email=${encodeURIComponent(variables.email)}`,
+      );
     },
     onError: (error: AxiosError<ApiResponse<RegisterResponse>>) => {
       const message = error.response?.data?.message ?? "Đã có lỗi xảy ra";
@@ -70,6 +75,9 @@ export function useLogout() {
       clearAuth();
       toast.success("Đăng xuất thành công");
       router.push(ROUTE.LOGIN);
+    },
+    onError: () => {
+      toast.error("Đăng xuất thất bại, vui lòng thử lại");
     },
   });
 }
